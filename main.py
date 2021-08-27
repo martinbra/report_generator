@@ -21,14 +21,13 @@
 # SOFTWARE.
 
 # Install needed libraries:
-# pip install python-docx PIL glob python-slugify
+# pip install python-docx PIL glob
 from docx import Document
 from docx.shared import Inches
 from PIL import Image, ImageTk
 import glob
 import tkinter as tk
 from tkinter import filedialog, ttk
-from slugify import slugify
 from random import choice
 from string import ascii_uppercase
 import os
@@ -128,14 +127,14 @@ def mostrar_fotos_obter_nome(grupo_de_fotos):
     def imagem_maximizada(foto):
         janela_x = 1024  # janela.winfo_width()
         janela_y = 768  # janela.winfo_height()
-        print(janela_x, janela_y)
+        # print(janela_x, janela_y)
 
         img = Image.open(foto)
         img_x, img_y = img.size
-        print(img_x, img_y)
+        # print(img_x, img_y)
         escala = min(janela_x/img_x, janela_y/img_y) * 0.8
         img_x, img_y = round(img_x * escala), round(img_y * escala)
-        print(img_x, img_y)
+        # print(img_x, img_y)
 
         img = img.resize((img_x, img_y))
 
@@ -185,7 +184,8 @@ def mostrar_fotos_obter_nome(grupo_de_fotos):
     janela.mainloop()
 
     # Limpa nome do arquivo
-    nome_para_arquivo = slugify(nome_para_arquivo)
+    nome_para_arquivo = "".join(c for c in nome_para_arquivo if c.isalnum() or c in ' ._').strip()
+
     if not nome_para_arquivo:
         nome_para_arquivo = "arquivo_sem_nome"
 
