@@ -21,13 +21,17 @@
 # SOFTWARE.
 
 # Install needed libraries:
-# pip install python-docx PIL glob
+# pip install python-docx PIL glob python-slugify
 from docx import Document
 from docx.shared import Inches
 from PIL import Image, ImageTk
 import glob
 import tkinter as tk
 from tkinter import filedialog, ttk
+from slugify import slugify
+from random import choice
+from string import ascii_uppercase
+import os
 
 
 def selecionar_pasta():
@@ -39,7 +43,7 @@ def selecionar_pasta():
     return root.folder_path
 
 
-def gerar_documento(nome_do_documento, lista_de_fotos):
+def gerar_documento(pasta_escolhida, nome_do_documento, lista_de_fotos):
     """ Gera um documento DOCX com nome e fotos providas, salva na pasta das fotos """
 
     documento = Document()
@@ -66,7 +70,8 @@ def gerar_documento(nome_do_documento, lista_de_fotos):
         documento.add_picture(foto, width=Inches(5.5))
 
     # Salva documento
-    documento.save(f"{nome_do_documento}.docx")
+    caminho_do_arquivo = os.path.join(pasta_escolhida, f"{nome_do_documento}.docx")
+    documento.save(caminho_do_arquivo)
 
 
 def detecta_foto_preta(foto, tolerancia=0.2):
@@ -111,6 +116,11 @@ def agrupar_fotos(lista_de_fotos):
 
 def mostrar_fotos_obter_nome(grupo_de_fotos):
     """ Mostra fotos do grupo em uma aba para obter nome do arquivo. """
+
+    # TODO: remover esse global. Depende de melhorias na função guarda_nome_do_arquivo
+    global nome_para_arquivo
+    nome_para_arquivo = ""
+
     janela = tk.Tk()
     janela.geometry("1024x768")
     # janela.state('zoomed')
@@ -131,17 +141,27 @@ def mostrar_fotos_obter_nome(grupo_de_fotos):
 
         return ImageTk.PhotoImage(img)
 
+    def guarda_nome_do_arquivo(*args):
+        _ = args  # Unused Tkinter arguments
+        # TODO: remover esse global. Depende de melhorias na função guarda_nome_do_arquivo
+        global nome_para_arquivo
+        nome_para_arquivo = nome.get()
+        janela.destroy()
+
     # TODO:
     #  ativar botão OK (e também ENTER)
     #  escala das imagens dinâmica
+    #  https://stackoverflow.com/questions/24061099/tkinter-resize-background-image-to-window-size
 
     # get value
     frame = tk.Frame(janela)
     frame.pack(side=tk.TOP, fill=tk.X)
     ttk.Label(frame, text="Nome do arquivo a gerar:").pack(side=tk.LEFT)
-    nome = ttk.Entry(frame)
+    nome = ttk.Entry(frame, textvariable=nome_para_arquivo)
     nome.pack(side=tk.LEFT, fill=tk.X, expand=True)
-    botao = ttk.Button(frame, text='OK')
+    nome.bind('<Return>', guarda_nome_do_arquivo)
+    nome.focus_set()
+    botao = ttk.Button(frame, text='OK', command=guarda_nome_do_arquivo)
     botao.pack(side=tk.LEFT)
 
     controle_abas = ttk.Notebook(janela)
@@ -158,11 +178,31 @@ def mostrar_fotos_obter_nome(grupo_de_fotos):
 
     controle_abas.pack(expand=1, fill="both")
 
+    # Trás janela para frente, e foca nela.
+    janela.after(1, lambda: janela.focus_force())
+
+    janela.protocol("WM_DELETE_WINDOW", guarda_nome_do_arquivo)
     janela.mainloop()
 
-    # print(nome.get())
+    # Limpa nome do arquivo
+    nome_para_arquivo = slugify(nome_para_arquivo)
+    if not nome_para_arquivo:
+        nome_para_arquivo = "arquivo_sem_nome"
+
     # TODO: retornar nome fornecido por usuário em campo de texto.
-    return "NOME DO DOC"
+    return nome_para_arquivo
+
+
+def move_arquivos(pasta_escolhida, nome_do_arquivo, grupo_de_fotos):
+
+    # Cria nova pasta
+    nova_pasta = os.path.join(pasta_escolhida, nome_do_arquivo)
+    os.mkdir(nova_pasta)
+
+    # Move Fotos
+    for foto in grupo_de_fotos:
+        novo_caminho = os.path.join(nova_pasta, os.path.basename(foto))
+        os.replace(foto, novo_caminho)
 
 
 def rodar_programa():
@@ -178,10 +218,21 @@ def rodar_programa():
     # list_of_pictures.sort(key=os.path.getmtime)
 
     # Gera documento para cada grupo de fotos obtido.
+    nomes_usados = []
     for i, grupo_de_fotos in enumerate(agrupar_fotos(fotos_da_pasta)):
         nome_do_arquivo = mostrar_fotos_obter_nome(grupo_de_fotos)
-        gerar_documento(f"doc{i}", grupo_de_fotos)
-        # TODO, mover fotos usadas para outra pasta.
+
+        # Se nome já tiver sido usado, gera um pós-fixo aleatório.
+        if nome_do_arquivo in nomes_usados:
+            nome_do_arquivo += f'_{choice(ascii_uppercase)}'  # Todo use generator
+        nomes_usados.append(nome_do_arquivo)
+
+        gerar_documento(pasta_escolhida, nome_do_arquivo, grupo_de_fotos)
+
+        # mover fotos usadas para outra pasta.
+        move_arquivos(pasta_escolhida, nome_do_arquivo, grupo_de_fotos)
+
+        # Todo: apagar fotos pretas.
 
 
 if __name__ == '__main__':
