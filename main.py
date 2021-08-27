@@ -106,28 +106,54 @@ def agrupar_fotos(lista_de_fotos):
             # Foto válida, adiciona ao grupo.
             novo_grupo.append(foto)
 
-    print(grupos_de_fotos)
     return grupos_de_fotos
 
 
 def mostrar_fotos_obter_nome(grupo_de_fotos):
     """ Mostra fotos do grupo em uma aba para obter nome do arquivo. """
     janela = tk.Tk()
-    # janela.geometry("500x500") # (optional)
+    janela.geometry("1024x768")
+    # janela.state('zoomed')
+
+    def imagem_maximizada(foto):
+        janela_x = 1024  # janela.winfo_width()
+        janela_y = 768  # janela.winfo_height()
+        print(janela_x, janela_y)
+
+        img = Image.open(foto)
+        img_x, img_y = img.size
+        print(img_x, img_y)
+        escala = min(janela_x/img_x, janela_y/img_y) * 0.8
+        img_x, img_y = round(img_x * escala), round(img_y * escala)
+        print(img_x, img_y)
+
+        img = img.resize((img_x, img_y))
+
+        return ImageTk.PhotoImage(img)
+
+    # TODO:
+    #  ativar botão OK (e também ENTER)
+    #  escala das imagens dinâmica
 
     # get value
-    # nome = tk.Entry(janela)
+    frame = tk.Frame(janela)
+    frame.pack(side=tk.TOP, fill=tk.X)
+    ttk.Label(frame, text="Nome do arquivo a gerar:").pack(side=tk.LEFT)
+    nome = ttk.Entry(frame)
+    nome.pack(side=tk.LEFT, fill=tk.X, expand=True)
+    botao = ttk.Button(frame, text='OK')
+    botao.pack(side=tk.LEFT)
 
     controle_abas = ttk.Notebook(janela)
 
     # Gera objetos das imagens para usar nas abas.
     # Caso imagem fosse gerada dentro do loop, apenas a foto da última aba apareceria.
-    fotos = [ImageTk.PhotoImage(Image.open(pic)) for pic in grupo_de_fotos]
+    fotos = [imagem_maximizada(foto) for foto in grupo_de_fotos]
 
     for idx, (foto, caminho_da_foto) in enumerate(zip(fotos, grupo_de_fotos)):
         nova_aba = ttk.Frame(controle_abas)
-        ttk.Label(nova_aba, image=foto).pack()
         ttk.Label(nova_aba, text=caminho_da_foto).pack()
+        ttk.Label(nova_aba, image=foto).pack()
         controle_abas.add(nova_aba, text=f"{idx:02}")
 
     controle_abas.pack(expand=1, fill="both")
